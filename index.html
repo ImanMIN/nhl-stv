@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NHL Special Teams Value (STV)</title>
+<style>
+:root{--bg:#fff;--fg:#1a1a1a;--mut:#6b7280;--line:#e5e7eb;--hd:#f3f4f6;--acc:#0b5fff}
+@media (prefers-color-scheme:dark){:root{--bg:#111418;--fg:#e8eaed;--mut:#9aa0a6;--line:#2b3037;--hd:#1b2027;--acc:#6ea0ff}}
+body{margin:0;padding:24px 16px;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,sans-serif}
+main{max-width:1000px;margin:auto}h1{margin:0 0 4px;font-size:24px}
+.sub{color:var(--mut);margin:0 0 16px}.wrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px}
+table{border-collapse:collapse;width:100%;min-width:760px}
+th,td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th{background:var(--hd);cursor:pointer;font-size:12px;text-transform:uppercase;letter-spacing:.04em;user-select:none}
+th:nth-child(-n+2),td:nth-child(-n+2){text-align:left}td:first-child{color:var(--mut);width:36px}
+td.stv{font-weight:700;color:var(--acc)}tr:last-child td{border-bottom:0}
+.bar{display:inline-block;height:6px;background:var(--acc);border-radius:3px;margin-left:8px;vertical-align:middle;opacity:.5}
+.note{color:var(--mut);font-size:13px;margin-top:14px}
+</style></head><body><main>
+<h1>NHL Special Teams Value</h1>
+<p class="sub" id="meta">Loading…</p>
+<div class="wrap"><table><thead><tr id="hd"></tr></thead><tbody id="body"></tbody></table></div>
+<p class="note">STV = PP% + PK% + 2×SHG − 2×SHGA. Click a column header to re-sort. Refreshed daily at 7:00 AM Toronto time.</p>
+</main>
+<script>
+const COLS=[["#",null],["Team","team"],["PPG","ppg"],["PPO","ppo"],["PP%","pp_pct"],["PKGA","pkga"],["PKO","pko"],["PK%","pk_pct"],["SHG","shg"],["SHGA","shga"],["STV","stv"]];
+let rows=[],key="stv",dir=-1;
+function render(){
+  const s=[...rows].sort((a,b)=>key==="team"?dir*-a.team.localeCompare(b.team):dir*(a[key]-b[key]));
+  const max=Math.max(...rows.map(r=>r.stv),1);
+  const rank=new Map([...rows].sort((a,b)=>b.stv-a.stv).map((r,i)=>[r.team,i+1]));
+  document.getElementById("body").innerHTML=s.map(r=>`<tr><td>${rank.get(r.team)}</td><td>${r.team}</td><td>${r.ppg}</td><td>${r.ppo}</td><td>${r.pp_pct.toFixed(1)}</td><td>${r.pkga}</td><td>${r.pko}</td><td>${r.pk_pct.toFixed(1)}</td><td>${r.shg}</td><td>${r.shga}</td><td class="stv">${r.stv.toFixed(1)}<span class="bar" style="width:${Math.max(r.stv/max*60,2)}px"></span></td></tr>`).join("");
+}
+const hd=document.getElementById("hd");
+COLS.forEach(([l,k])=>{const th=document.createElement("th");th.textContent=l;if(k)th.onclick=()=>{dir=key===k?-dir:(k==="team"?-1:-1);key=k;render()};hd.appendChild(th)});
+fetch("data.json?"+Date.now()).then(r=>r.json()).then(d=>{
+  rows=d.teams;
+  document.getElementById("meta").textContent=`${d.season.slice(0,4)}–${d.season.slice(4)} regular season · updated ${new Date(d.updated).toLocaleString()}`;
+  render();
+}).catch(()=>{document.getElementById("meta").textContent="No data yet. Run the “Update NHL special teams” workflow once to create data.json."});
+</script></body></html>
