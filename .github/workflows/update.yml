@@ -1,0 +1,29 @@
+name: Update NHL special teams
+on:
+  schedule:
+    - cron: "0 11 * * *"   # 7:00 AM Toronto during daylight time (Mar-Nov)
+    - cron: "0 12 * * *"   # 7:00 AM Toronto during standard time (Nov-Mar)
+  workflow_dispatch: {}
+permissions:
+  contents: write
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - name: Only run at 7 AM Toronto (or when started by hand)
+        id: gate
+        run: |
+          H=$(TZ=America/Toronto date +%H)
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ "$H" = "07" ]; then echo "go=1" >> $GITHUB_OUTPUT; fi
+      - name: Fetch stats
+        if: steps.gate.outputs.go == '1'
+        run: python scripts/fetch_stats.py
+      - name: Commit data
+        if: steps.gate.outputs.go == '1'
+        run: |
+          git config user.name "stv-bot"; git config user.email "stv-bot@users.noreply.github.com"
+          git add data.json
+          git diff --cached --quiet || (git commit -m "Daily STV update" && git push)
